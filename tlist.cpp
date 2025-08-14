@@ -1,5 +1,13 @@
 #include "header.h"
 
+#include <iostream>
+#include <fstream>
+#include <tuple>
+// #include <tuple>
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #define TITLE_SIZE          64
 #define PROCESS_SIZE        MAX_PATH
 #define INITIAL_SIZE        51200
@@ -10,21 +18,88 @@
 #define PROCESSID_COUNTER   "id process"
 #define UNKNOWN_TASK        "Unknown"
 
+static std::string toLower(const std::string& str)
+{
+    std::string lowerStr = str;
+    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(),
+        [](unsigned char c) { return std::tolower(c); });
+    return lowerStr;
+}
+
 struct TLIST {
     DWORD			dwProcessId;
     CHAR			ProcessName[PROCESS_SIZE];
 	struct TLIST	*next;
 };
 
+/// <summary>
+/// Extract the ids of the "process" and "id process" from a buffer
+/// </summary>
+/// <param name="buf">Buffer to be searched</param>
+/// <param name="dwSize">Buffer length</param>
+/// <returns>Tuple of ids (process and id process) or -1, -1</returns>
+static std::tuple<unsigned long, unsigned long> get_counter_ids(
+    const LPBYTE buf,
+    const DWORD dwSize)
+{
+    unsigned long process_id = 0;
+    unsigned long id_process_id = 0;
+    int ids_found = 0;
+
+    auto p = buf;
+    bool bContinue = true;
+    while (p < p + dwSize && bContinue)
+    {
+        char* endPtr;
+
+        // Get id
+        auto id = strtoul(reinterpret_cast<const char*>(p), &endPtr, 10);
+        if (errno == ERANGE)
+        {
+            printf("Error converting\n");
+            exit(1);  // NOLINT(concurrency-mt-unsafe)
+        }
+        if (reinterpret_cast<char*>(p) == endPtr)
+        {
+            // Break if end of data reached
+            break;
+        }
+
+        p = p + strlen(reinterpret_cast<const char*>(p)) + 1;
+        auto name = std::string(reinterpret_cast<const char*>(p));
+        if (toLower(name) == PROCESS_COUNTER)
+        {
+            process_id = id;
+            ++ids_found;
+            // Exit once both ids are found
+            if (ids_found >= 2)
+            {
+                break;
+            }
+        }
+        else if (toLower(name) == PROCESSID_COUNTER)
+        {
+            id_process_id = id;
+            ++ids_found;
+            // Exit once both ids are found
+            if (ids_found >= 2)
+            {
+                break;
+            }
+        }
+        p = p + name.length() + 1;
+    }
+
+    return std::make_tuple(process_id, id_process_id);
+}
+
 int GetTaskList(struct TLIST *tlist)
 {
-    DWORD                        rc;
     HKEY                         hKeyNames;
     DWORD                        dwType;
     DWORD                        dwSize;
     LPBYTE                       buf = NULL;
     CHAR                         szSubKey[1024];
-    LANGID                       lid;
     LPSTR                        p;
     LPSTR						 p2;
     PPERF_DATA_BLOCK             pPerf;
@@ -33,100 +108,105 @@ int GetTaskList(struct TLIST *tlist)
     PPERF_COUNTER_BLOCK          pCounter;
     PPERF_COUNTER_DEFINITION     pCounterDef;
     DWORD                        i;
-    DWORD                        dwProcessIdTitle;
+    //DWORD                        dwProcessIdTitle;
     DWORD                        dwProcessIdCounter;
     CHAR                         szProcessName[MAX_PATH];
     DWORD                        dwNumTasks;
 
+
+    dwSize = 20000;
+    auto buf2 = std::vector<BYTE>(dwSize);
+
     // this returns "009" on my system
-	lid = MAKELANGID( LANG_ENGLISH, SUBLANG_NEUTRAL );
+	LANGID lid = MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL);
     wsprintf( szSubKey, "%s\\%03x", REGKEY_PERF, lid );
 
 	// Get handle to "khlm\sw\ms\winnt\cv\perflib\009"
-    rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE,
-                       szSubKey,
-                       0,
-                       KEY_READ,
-                       &hKeyNames
-                     );
+    DWORD rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+                            szSubKey,
+                            0,
+                            KEY_READ,
+                            &hKeyNames
+    );
     if (rc != ERROR_SUCCESS) {
         goto exit;
     }
 
     // get the buffer size for the counter value
-    rc = RegQueryValueEx( hKeyNames, REGSUBKEY_COUNTERS, NULL, &dwType, NULL, &dwSize);
+    rc = RegQueryValueEx(hKeyNames, REGSUBKEY_COUNTERS, NULL,
+        &dwType, NULL, &dwSize);
 
-    if (rc != ERROR_SUCCESS) goto exit;
+    if (rc != ERROR_SUCCESS)
+        goto exit;
 
     // allocate the counter names buffer
     buf = (LPBYTE) malloc(dwSize);
 
-	if (buf == NULL) goto exit;
+	if (buf == NULL)
+        goto exit;
 
-    memset( (void *) buf, 0, dwSize );
+    memset( buf, 0, dwSize );
 
     // read the counter names from the registry
-    rc = RegQueryValueEx(hKeyNames, REGSUBKEY_COUNTERS,NULL, &dwType, buf, &dwSize);
+    rc = RegQueryValueEx(hKeyNames, REGSUBKEY_COUNTERS,NULL,
+        &dwType, buf, &dwSize);
 
-    if (rc != ERROR_SUCCESS) {
+    if (rc != ERROR_SUCCESS)
         goto exit;
+
+    p = reinterpret_cast<char*>(buf);
+
+	//dwProcessIdTitle = 0; // added by me as dwProcessIdTitle may be used without init
+
+    auto [process_id, id_process_id] = get_counter_ids(buf, dwSize);
+    if (process_id == 0 || id_process_id == 0)
+    {
+        (void)fprintf(stderr, "Failed to get both ids\n");
+        exit(2);
     }
-
-    p = (char *) buf;
-
-	dwProcessIdTitle = 0; // added by me as dwProcessIdTitle may be used without init
-
-    while (*p) {
-        if (p > (char *) buf) {
-            for( p2=p-2; isdigit(*p2); p2--) ;
-            }
-        if (lstrcmpi(p, PROCESS_COUNTER) == 0) {
-            for( p2=p-2; isdigit(*p2); p2--) ;
-            lstrcpy( szSubKey, p2+1 );
-        }
-        else
-        if (lstrcmpi(p, PROCESSID_COUNTER) == 0) {
-            for( p2=p-2; isdigit(*p2); p2--) ;
-            dwProcessIdTitle = atol( p2+1 );
-        }
-        p += (lstrlen(p) + 1);
-    }
-    free( buf );
 
     dwSize = INITIAL_SIZE;
     buf = (LPBYTE) malloc( dwSize );
-    if (buf == NULL) {
+    if (buf == NULL)
         goto exit;
-    }
-    memset( buf, 0, dwSize );
 
-    while (TRUE) {
-        rc = RegQueryValueEx( HKEY_PERFORMANCE_DATA,szSubKey,NULL,&dwType,buf,&dwSize);
+    memset( buf, 0, dwSize );
+    while (TRUE)
+    {
+
+        rc = RegQueryValueEx( HKEY_PERFORMANCE_DATA,
+            std::to_string(process_id).c_str(),
+            NULL,
+            &dwType,buf,
+            &dwSize);
         pPerf = (PPERF_DATA_BLOCK) buf;
         if ((rc == ERROR_SUCCESS) &&
             (dwSize > 0) &&
             (pPerf)->Signature[0] == (WCHAR)'P' &&
             (pPerf)->Signature[1] == (WCHAR)'E' &&
             (pPerf)->Signature[2] == (WCHAR)'R' &&
-            (pPerf)->Signature[3] == (WCHAR)'F' ) {
+            (pPerf)->Signature[3] == (WCHAR)'F' )
+        {
             break;
         }
-        if (rc == ERROR_MORE_DATA) {
+        if (rc == ERROR_MORE_DATA)
+        {
             dwSize += EXTEND_SIZE;
             buf = (LPBYTE) realloc( buf, dwSize );
             memset( buf, 0, dwSize );
         }
-        else {
+        else
+        {
             goto exit;
         }
     }
 
-	dwProcessIdCounter = 0; /* added by me as var could be used without init */
-
-    pObj = (PPERF_OBJECT_TYPE) ((DWORD)pPerf + pPerf->HeaderLength);
-    pCounterDef = (PPERF_COUNTER_DEFINITION) ((DWORD)pObj + pObj->HeaderLength);
-    for (i=0; i<(DWORD)pObj->NumCounters; i++) {
-        if (pCounterDef->CounterNameTitleIndex == dwProcessIdTitle) {
+    pObj = reinterpret_cast<PPERF_OBJECT_TYPE>(reinterpret_cast<char*>(pPerf) + pPerf->HeaderLength);
+    pCounterDef = reinterpret_cast<PPERF_COUNTER_DEFINITION>(reinterpret_cast<char*>(pObj) + pObj->HeaderLength);
+    for (DWORD i=0; i < pObj->NumCounters; i++)
+    {
+        if (pCounterDef->CounterNameTitleIndex == id_process_id)
+        {
             dwProcessIdCounter = pCounterDef->CounterOffset;
             break;
         }
@@ -135,15 +215,17 @@ int GetTaskList(struct TLIST *tlist)
 
     dwNumTasks = (DWORD) pObj->NumInstances;
 
-    pInst = (PPERF_INSTANCE_DEFINITION) ((DWORD)pObj + pObj->DefinitionLength);
+    pInst = (PPERF_INSTANCE_DEFINITION) ((char *)pObj + pObj->DefinitionLength);
 
-    for (i=0; i<dwNumTasks; i++) {
-
-        p = (LPSTR) ((DWORD)pInst + pInst->NameOffset);
-        rc = WideCharToMultiByte( CP_ACP, 0, (LPCWSTR)p, -1, szProcessName,
+    for (LONG ndx=0; ndx < dwNumTasks; ndx++)
+    {
+        p = (LPSTR)(reinterpret_cast<char*>(pInst) + pInst->NameOffset);
+        rc = WideCharToMultiByte( CP_ACP, 0,
+            (LPCWSTR)p, -1, szProcessName,
 			sizeof(szProcessName), NULL, NULL);
 
-        if (!rc) {
+        if (!rc)
+        {
             lstrcpy( tlist->ProcessName, UNKNOWN_TASK );
         }
 
@@ -151,24 +233,27 @@ int GetTaskList(struct TLIST *tlist)
 		lstrcpy( tlist->ProcessName, szProcessName );
 
 		// load Pid into tlist
-	    pCounter = (PPERF_COUNTER_BLOCK) ((DWORD)pInst + pInst->ByteLength);
-        tlist->dwProcessId = *((LPDWORD) ((DWORD)pCounter + dwProcessIdCounter));
-        pInst = (PPERF_INSTANCE_DEFINITION) ((DWORD)pCounter + pCounter->ByteLength);
+	    pCounter = reinterpret_cast<PPERF_COUNTER_BLOCK>(reinterpret_cast<char*>(pInst) + pInst->ByteLength);
+        tlist->dwProcessId = *(reinterpret_cast<LPDWORD>(reinterpret_cast<char*>(pCounter) + dwProcessIdCounter));
+        pInst = reinterpret_cast<PPERF_INSTANCE_DEFINITION>(reinterpret_cast<char*>(pCounter) + pCounter->ByteLength);
 
 		// create a new tlist record
-		tlist->next = (struct TLIST *) HeapAlloc(GetProcessHeap(), 0, sizeof(struct TLIST));
-		if(!(tlist->next)) return(1);
+		tlist->next = static_cast<struct TLIST*>(HeapAlloc(GetProcessHeap(), 0, sizeof(struct TLIST)));
+		if(!(tlist->next))
+            return 1;
 
 		tlist = tlist->next; // point to the new record
 		tlist->next = NULL; // in case this is last record, null serves as a flag
 		// note, last record of tlist will be undefined except next which is NULL
     }
-	return(0);
+	return 0;
+
 exit:
-    if(buf) free(buf);
+    if(buf)
+        free(buf);
     RegCloseKey( hKeyNames );
     RegCloseKey( HKEY_PERFORMANCE_DATA );
-	return(1);
+	return 1;
 }
 
 char *GetImageName(long pid)
@@ -178,15 +263,18 @@ char *GetImageName(long pid)
 	struct TLIST *t;
 	static char Unknown[] = "Unknown";
 
-	if(!init++) {
+	if(!init++)
+    {
 		tlist.next = NULL;
 		if(GetTaskList(&tlist)) return NULL;
 		// build list of tasks
 	}
 
 	t = &tlist;
-	while(t->next) {
-		if(t->dwProcessId == (DWORD) pid) return t->ProcessName;
+	while(t->next)
+    {
+		if(t->dwProcessId == (DWORD) pid)
+            return t->ProcessName;
 		t = t->next;
 	}
 	return Unknown;

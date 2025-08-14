@@ -2,7 +2,7 @@
 
 void ParseArgs(int argc, char *argv[], struct ARGS *a)
 {
-	register int i;
+	int i;
 	int form1;	/* count of form1 options - list window(s) */
 	int form2;	/* count of form2 options - operation performed on all windows */
 	int form3;	/* count of form3 options - operation performed on selected windows */
@@ -211,8 +211,7 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
 
 enum TASK PushTask(enum TASK tasks[], enum TASK t)
 {
-	register int i;
-	i = 0;
+	int i = 0;
 
 	//
 	// goto last task plus one, null terminate task queue, then add task to queue
@@ -225,7 +224,7 @@ enum TASK PushTask(enum TASK tasks[], enum TASK t)
 
 enum TASK PopTask(enum TASK tasks[])
 {
-	register int i;
+	int i;
 	enum TASK t;
 	i = 0;
 
@@ -239,7 +238,7 @@ enum TASK PopTask(enum TASK tasks[])
 
 int IsTask(enum TASK tasks[], enum TASK t)
 {
-	register int i;
+	int i;
 	i = 0;
 
 	while(tasks[i]) if(tasks[i++]==t) return(1);
