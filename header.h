@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <winperf.h>
+#include <tuple>
+#include <string_view>
+#include <fmt/core.h>
+
 
 //
 enum
@@ -144,7 +148,7 @@ char *GetArgs();
 char *GetRestCmdline(char *Cmd);
 
 /* help.c functions */
-void ShowHelp(char *);
+void ShowHelp(char *, std::string_view);
 void Quit(const int Err);
 
 /* tlist.c functions */
@@ -184,3 +188,8 @@ void TopWin(struct WLIST *w, struct ARGS *a);
 void NotWin(struct WLIST *w, struct ARGS *a);
 
 int __cdecl _ConvertCommandLineToArgcArgv(void);
+
+std::tuple<unsigned long, unsigned long> get_counter_ids(
+    const LPBYTE buf,
+    const DWORD dwSize);
+

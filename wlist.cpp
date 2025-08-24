@@ -381,7 +381,7 @@ void SetFGWindow(HWND hwnd)
 //
 // Maximize window, if window hidden it will unhide itself, if disabled, stays disabled
 //
-void MaxWin(struct WLIST *w, struct ARGS *a)
+void MaxWin(struct WLIST *w, struct ARGS *)
 {
     HWND tmp;
 
@@ -399,7 +399,7 @@ void MaxWin(struct WLIST *w, struct ARGS *a)
 //
 // Minimize window, if window hidden it will become visible, if disabled, stays disabled
 //
-void MinWin(struct WLIST *w, struct ARGS *a)
+void MinWin(struct WLIST *w, struct ARGS *)
 {
     HWND tmp;
     //
@@ -416,7 +416,7 @@ void MinWin(struct WLIST *w, struct ARGS *a)
 //
 // Restore
 //
-void ResWin(struct WLIST *w, struct ARGS *a)
+void ResWin(struct WLIST *w, struct ARGS *)
 {
     HWND tmp;
     tmp = GetForegroundWindow();
@@ -432,7 +432,7 @@ void ResWin(struct WLIST *w, struct ARGS *a)
 //
 // Activate the window, if window is hidden, it gets focus but stays hidden,
 //
-void ActWin(struct WLIST *w, struct ARGS *a)
+void ActWin(struct WLIST *w, struct ARGS *)
 {
     SetFGWindow(w->hwnd);
 }
@@ -440,7 +440,7 @@ void ActWin(struct WLIST *w, struct ARGS *a)
 //
 // Inactivate window
 //
-void InaWin(struct WLIST *w, struct ARGS *a)
+void InaWin(struct WLIST *w, struct ARGS *)
 {
     //
     // only activate another window if specified window actually has focus
@@ -454,7 +454,7 @@ void InaWin(struct WLIST *w, struct ARGS *a)
 //
 // Enable window
 //
-void EnaWin(struct WLIST *w, struct ARGS *a)
+void EnaWin(struct WLIST *w, struct ARGS *)
 {
     EnableWindow(w->hwnd, TRUE);
 }
@@ -462,7 +462,7 @@ void EnaWin(struct WLIST *w, struct ARGS *a)
 //
 // Disable window
 //
-void DisWin(struct WLIST *w, struct ARGS *a)
+void DisWin(struct WLIST *w, struct ARGS *)
 {
     EnableWindow(w->hwnd, FALSE);
 }
@@ -470,7 +470,7 @@ void DisWin(struct WLIST *w, struct ARGS *a)
 //
 // Hide the window
 //
-void HidWin(struct WLIST *w, struct ARGS *a)
+void HidWin(struct WLIST *w, struct ARGS *)
 {
     ShowWindowAsync(w->hwnd, SW_HIDE);
 }
@@ -478,7 +478,7 @@ void HidWin(struct WLIST *w, struct ARGS *a)
 //
 // Make the window visible
 //
-void VisWin(struct WLIST *w, struct ARGS *a)
+void VisWin(struct WLIST *w, struct ARGS *)
 {
     ShowWindowAsync(w->hwnd, SW_SHOW);
 }
@@ -486,7 +486,7 @@ void VisWin(struct WLIST *w, struct ARGS *a)
 //
 // politely ask the window to close
 //
-void ClsWin(struct WLIST *w, struct ARGS *a)
+void ClsWin(struct WLIST *w, struct ARGS *)
 {
     PostMessage(w->hwnd, WM_CLOSE, 0, 0);
 }
@@ -494,7 +494,7 @@ void ClsWin(struct WLIST *w, struct ARGS *a)
 //
 // End process associated with window (all windows with same Pid are killed!!!
 //
-void EndWin(struct WLIST *w, struct ARGS *a)
+void EndWin(struct WLIST *w, struct ARGS *)
 {
     HANDLE hProcess;
 
@@ -603,7 +603,7 @@ void SizWin(struct WLIST *w, struct ARGS *a)
 //
 // Run
 //
-void RunWin(struct WLIST *w, struct ARGS *a)
+void RunWin(struct WLIST *, struct ARGS *a)
 {
 #define SHELLEXEC_SUCCESS 33
     int RetVal;
@@ -714,12 +714,12 @@ void AltTab(void)
     }
 }
 
-void TopWin(struct WLIST *w, struct ARGS *a)
+void TopWin(struct WLIST *w, struct ARGS *)
 {
     SetWindowPos(w->hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 }
 
-void NotWin(struct WLIST *w, struct ARGS *a)
+void NotWin(struct WLIST *w, struct ARGS *)
 {
     SetWindowPos(w->hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 }

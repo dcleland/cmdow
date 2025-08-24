@@ -1,16 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(cmdow CXX)
+project(cmdow 
+    VERSION 2.0.0
+    DESCRIPTION "cmdow - Command line tool to manipulate windows"
+    LANGUAGES CXX)
 
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
 
 find_package(catch2 CONFIG REQUIRED)
-
-
-set(CMDOW_VER 1)
-set(CMDOW_REV 4)
-set(CMDOW_ZAP 8)
+find_package(fmt CONFIG REQUIRED)
 
 # Uncomment line below for an Official build
 set(OFFICIAL_BUILD 1)
@@ -18,20 +17,14 @@ set(OFFICIAL_BUILD 1)
 string(TIMESTAMP BUILDDATE "%Y%m%d")
 message("BUILDDATE ${BUILDDATE}")
 
-
 # Use static runtime
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_DIRECTORIES_BEFORE ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-# add_definitions(-D_AFXDLL)
-# Use static MFC library (=1).  Set to 2 for shared library
-set(CMAKE_MFC_FLAG 1)
-
 
 # Link this 'library' to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
@@ -42,13 +35,13 @@ add_library(project_warnings INTERFACE)
 
 # standard compiler warnings
 include(cmake/CompilerWarnings.cmake)
-#set_project_warnings(project_warnings)
+# set_project_warnings(project_warnings)
 
 # sanitizer options if supported by compiler
 include(cmake/Sanitizers.cmake)
 enable_sanitizers(project_options)
 
-# Add binary directory so the versions.h is picked up.
+# Add binary directory so the versions.hpp is picked up.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # Enable PDBs for release builds
@@ -67,15 +60,22 @@ set(SRCS ${CMAKE_CURRENT_SOURCE_DIR})
 #
 set(cmdow_HDRS
 header.h
+registry_wrappers.hpp
+get_last_error_text.hpp
+st_utils.hpp
 )
 
 set(cmdow_SRCS
 args.cpp
-header.h
 help.cpp
 main.cpp
 tlist.cpp
 wlist.cpp
+get_last_error_text.cpp
+get_counter_ids.cpp
+st_utils.cpp
+VERSION
+version.hpp.in
 )
 
 add_executable(cmdow
@@ -93,8 +93,20 @@ target_compile_definitions(cmdow PRIVATE
 target_link_libraries(cmdow PRIVATE
     project_options
     project_warnings
+    fmt::fmt
 #    gdiplus
     )
+
+target_compile_options(cmdow PRIVATE 
+    /fsanitize=address /Zi
+)
+
+add_custom_target(VersionHeader
+    ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/VersionHeader.cmake
+)
+add_dependencies(cmdow VersionHeader)
+
+add_subdirectory(tests)
 
 #
 #

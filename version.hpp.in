@@ -1,0 +1,6 @@
+// auto-generated file
+#pragma once
+#include <string>
+
+const std::string BUILD_DATE = "@BUILDDATE@";
+const std::string VERSION_INFO = "@VERSION_INFO@";

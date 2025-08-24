@@ -1,3 +1,5 @@
+#include <string_view>
+
 #include "header.h"
 
 #ifdef __MINGW32__
@@ -33,8 +35,12 @@ int main(int argc, char *argv[])
     switch (*args.tasks)
     {
     case HELP:
-        ShowHelp(args.helpcmd);
+    {
+        std::string_view svHelpCmd(args.helpcmd ? args.helpcmd : "");
+        ShowHelp(args.helpcmd, svHelpCmd);
         break;
+    }
+
     case CW:
         // CascadeWindows(NULL, 0, NULL, 0, NULL);
         hWnd = FindWindow("Shell_TrayWnd", "");

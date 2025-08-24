@@ -2,13 +2,7 @@
 
 void ParseArgs(int argc, char *argv[], struct ARGS *a)
 {
-    int i;
-    int form1;  /* count of form1 options - list window(s) */
-    int form2;  /* count of form2 options - operation performed on all windows */
-    int form3;  /* count of form3 options - operation performed on selected windows */
-    int form4;  /* count of form4 options - run/open a program/file */
-    int form5;  /* count of form5 options - rename this console window 7*/
-    int fcount; /* count of number of forms used */
+	int form1;
 
     //
     // init the args struct
@@ -39,7 +33,7 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
     //
     // grab every arg and push onto task queue/set options
     //
-    for (i = 1; i < argc; ++i)
+    for (int i = 1; i < argc; ++i)
     {
         if (!lstrcmpi("/?", argv[i]))
         {
@@ -230,19 +224,19 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
     //
     // now check for valid combinations of args
     //
-    form5 = IsTask(a->tasks, RCW);
+    int form5 = IsTask(a->tasks, RCW);
 
-    form4 = IsTask(a->tasks, RUN); // run/open program/file
+    int form4 = IsTask(a->tasks, RUN); // run/open program/file
 
-    form3 = ( // op on single window
-        IsTask(a->tasks, MIN) + IsTask(a->tasks, MAX) + IsTask(a->tasks, RES) + IsTask(a->tasks, ACT) +
-        IsTask(a->tasks, INA) + IsTask(a->tasks, ENA) + IsTask(a->tasks, DIS) + IsTask(a->tasks, HID) +
-        IsTask(a->tasks, VIS) + IsTask(a->tasks, END) + IsTask(a->tasks, CLS) + IsTask(a->tasks, REN) +
-        IsTask(a->tasks, MOV) + IsTask(a->tasks, SIZ) + IsTask(a->tasks, TOP) + IsTask(a->tasks, NOT));
+    int form3 = ( // op on single window
+	    IsTask(a->tasks, MIN) + IsTask(a->tasks, MAX) + IsTask(a->tasks, RES) + IsTask(a->tasks, ACT) +
+	    IsTask(a->tasks, INA) + IsTask(a->tasks, ENA) + IsTask(a->tasks, DIS) + IsTask(a->tasks, HID) +
+	    IsTask(a->tasks, VIS) + IsTask(a->tasks, END) + IsTask(a->tasks, CLS) + IsTask(a->tasks, REN) +
+	    IsTask(a->tasks, MOV) + IsTask(a->tasks, SIZ) + IsTask(a->tasks, TOP) + IsTask(a->tasks, NOT));
 
-    form2 = ( // op on all windows
-        IsTask(a->tasks, CW) + IsTask(a->tasks, TV) + IsTask(a->tasks, TH) + IsTask(a->tasks, MA) +
-        IsTask(a->tasks, UW) + IsTask(a->tasks, AT) + IsTask(a->tasks, FS) + IsTask(a->tasks, WM));
+    int form2 = ( // op on all windows
+	    IsTask(a->tasks, CW) + IsTask(a->tasks, TV) + IsTask(a->tasks, TH) + IsTask(a->tasks, MA) +
+	    IsTask(a->tasks, UW) + IsTask(a->tasks, AT) + IsTask(a->tasks, FS) + IsTask(a->tasks, WM));
 
     // if forms 5 to 2 not used or any listopts used, then form1 in use
     if (((form5 + form4 + form3 + form2) == 0) || a->listopts)
@@ -250,7 +244,7 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
     else
         form1 = 0;
 
-    fcount = 0;
+    int fcount = 0;
     if (form5)
         ++fcount;
     if (form4)
