@@ -97,9 +97,10 @@ target_link_libraries(cmdow PRIVATE
 #    gdiplus
     )
 
-target_compile_options(cmdow PRIVATE 
-    /fsanitize=address /Zi
-)
+# Uncomment below to enable address sanitizer
+#target_compile_options(cmdow PRIVATE 
+#/fsanitize=address /Zi
+#)
 
 add_custom_target(VersionHeader
     ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/VersionHeader.cmake
