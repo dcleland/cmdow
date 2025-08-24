@@ -46,7 +46,8 @@ enum
     BADIMG = 9,  /* Unable to retrieve image names */
     TASKOL = 10, /* Too many tasks have been specified */
     EXEERR = 11, /* Unable to execute/open specified file */
-    VERERR = 12  /* Only the /? and /RUN commands are supported on W95/98/ME platforms */
+    VERERR = 12, /* Only the /? and /RUN commands are supported on W95/98/ME platforms */
+	BADVAL = 13  /* Conversion failed */
 };
 
 enum
@@ -145,11 +146,13 @@ char *LoadString(char **dest, const char *src);
 HWND atoHandle(const char *);
 int atoCoord(const char *);
 char *GetArgs();
-char *GetRestCmdline(char *Cmd);
+char *GetRestCmdline(const char *Cmd);
 
 /* help.c functions */
 void ShowHelp(char *, std::string_view);
 void Quit(const int Err);
+void QuitMsg(const std::string& msg);
+
 
 /* tlist.c functions */
 // BOOL EnableDebugPrivNT(void);

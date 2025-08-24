@@ -1,4 +1,6 @@
 #include "header.h"
+#include "st_utils.hpp"
+#include <fmt/core.h>
 
 void ParseArgs(int argc, char *argv[], struct ARGS *a)
 {
@@ -63,7 +65,7 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
         else if (!lstrcmpi("/MA", argv[i]))
             PushTask(a->tasks, MA);
         else if (!lstrcmpi("/UM", argv[i]))
-            PushTask(a->tasks, UW); // maintain /um for compatability with old scripts
+            PushTask(a->tasks, UW); // maintain /um for compatibility with old scripts
         else if (!lstrcmpi("/UW", argv[i]))
             PushTask(a->tasks, UW);
         else if (!lstrcmpi("/AT", argv[i]))
@@ -108,9 +110,20 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
             //
             if ((i + 2) < argc)
             {
-                a->left = atoi(argv[++i]);
-                a->top = atoi(argv[++i]);
-                if ((!a->left) && lstrcmp(argv[i - 1], "0"))
+                try
+                {
+                    a->left = std::stoi(argv[++i]);
+                    a->top = std::stoi(argv[++i]);
+                }
+                catch (std::invalid_argument &e)
+                {
+					auto msg = fmt::format(
+                        "Failed to convert value to int: {}", 
+                        argv[i]);
+                    QuitMsg(msg);
+                }
+
+            	if ((!a->left) && lstrcmp(argv[i - 1], "0"))
                 {
                     Quit(MOVERR);
                 }
@@ -132,9 +145,19 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
             PushTask(a->tasks, SIZ);
             if ((i + 2) < argc)
             {
-                a->width = atoi(argv[++i]);
-                a->height = atoi(argv[++i]);
-                if ((!a->width) && lstrcmp(argv[i - 1], "0"))
+                try
+                {
+                    a->width = std::stoi(argv[++i]);
+                    a->height = std::stoi(argv[++i]);
+                }
+	            catch (std::invalid_argument& e)
+	            {
+	                auto msg = fmt::format(
+	                    "Failed to convert value to int: {}",
+	                    argv[i]);
+	                QuitMsg(msg);
+	            }
+                	if ((!a->width) && lstrcmp(argv[i - 1], "0"))
                 {
                     Quit(SIZERR);
                 }
@@ -334,30 +357,26 @@ int IsTask(enum TASK tasks[], enum TASK t)
 HWND atoHandle(const char *src)
 {
     char *p;
-    HWND h;
 
     // string must begin with 0x or 0X
-    if (strncmp("0x", src, 2) && strncmp("0X", src, 2))
-        return (HWND)(0);
-    h = (HWND)strtoul(src, &p, 16);
+    if (strncmp("0x", src, 2) != 0 &&
+        strncmp("0X", src, 2) != 0)
+    {
+        return 0;
+    }
+
+    HWND h = reinterpret_cast<HWND>(strtoul(src, &p, 16));
     // all characters must be interpreted
     if (*p)
-        return (HWND)(0);
-    else
-        return h;
-}
-
-int atoCoord(const char *src)
-{
-    int i;
-    i = 0;
-    atoi(src);
-    return i;
+    {
+        return nullptr;
+    }
+	return h;
 }
 
 char *LoadString(char **dest, const char *src)
 {
-    *dest = (char *)HeapAlloc(GetProcessHeap(), 0, sizeof(char) * (lstrlen(src) + 1));
+    *dest = static_cast<char*>(HeapAlloc(GetProcessHeap(), 0, sizeof(char) * (lstrlen(src) + 1)));
     if (!*dest)
         Quit(MEMERR);
     lstrcpy(*dest, src);
@@ -371,7 +390,7 @@ void Quit(const int Err)
         //       --1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
         "Memory allocation failed",                                          /* MEMERR 0 */
         "/MOV command requires left and top arguments",                      /* MOVERR 1 */
-        "/SIZ command requires width and height agrguments",                 /* SIZERR 2 */
+        "/SIZ command requires width and height arguments" ,                 /* SIZERR 2 */
         "/REN command requires a new caption to be specified",               /* RENERR 3 */
         "Unrecognized argument(s). Use CMDOW /? for help",                   /* UNRARG 4 */
         "Incompatible argument(s). Use CMDOW /? for help",                   /* CONARG 5 */
@@ -384,15 +403,33 @@ void Quit(const int Err)
         "Only the /? and /RUN commands are supported on W95/98/ME platforms" /* VERERR 12 */
     };
 
-    DWORD cbWritten;
-    int BytesToWrite;
-    lstrcat(szBuff, msg[Err]);
-    lstrcat(szBuff, ".\n");
-    BytesToWrite = lstrlen(szBuff);
+    auto full_msg = fmt::format("Error: {}.\n", msg[Err]);
 
-    WriteFile(GetStdHandle(STD_ERROR_HANDLE), szBuff, BytesToWrite, &cbWritten, 0);
+    DWORD cbWritten;
+    DWORD BytesToWrite = full_msg.size();
+    WriteFile(GetStdHandle(STD_ERROR_HANDLE),
+        szBuff,
+        BytesToWrite,
+        &cbWritten,
+        nullptr);
 
     ExitProcess(1);
+}
+
+void QuitMsg(const std::string &msg)
+{
+	auto full_msg = fmt::format("Error: {}.\n", msg);
+
+	DWORD cbWritten;
+	DWORD BytesToWrite = full_msg.size();
+
+	WriteFile(GetStdHandle(STD_ERROR_HANDLE),
+	          full_msg.c_str(),
+	          BytesToWrite,
+	          &cbWritten,
+	          nullptr);
+
+	ExitProcess(1);
 }
 
 char *GetArgs()
@@ -415,7 +452,7 @@ char *GetArgs()
         // allocate enough memory to hold the longest argument
         //
         i = lstrlen(SysCmdLine);
-        Argv = (char *)HeapAlloc(GetProcessHeap(), 0, i + 1);
+        Argv = static_cast<char*>(HeapAlloc(GetProcessHeap(), 0, i + 1));
         if (!Argv)
             Quit(MEMERR);
     }
@@ -426,17 +463,20 @@ char *GetArgs()
     ArgvPos = Argv;
     *ArgvPos = 0;
 
-    while (1)
+    while (true)
     {
         //
         // find start of argument, skipping any whitespace
         //
         while (*ArgvPos && ((' ' == *ArgvPos) || ('\t' == *ArgvPos)))
+        {
             ++ArgvPos;
+        }
 
         if (0 == *ArgvPos)
+        {
             return Argv;
-
+        }
         //
         // now work through any quotes, copying every third quote
         //
@@ -453,13 +493,13 @@ char *GetArgs()
         }
 
         if (0 == *ArgvPos)
+        {
             return Argv;
-
+        }
         //
         // now work through the argument, copying to Argv
         //
     }
-    return Argv;
 }
 
 //+---------------------------------------------------------------------------
@@ -475,23 +515,24 @@ char *GetArgs()
 // Notes:
 //
 //----------------------------------------------------------------------------
-char *GetRestCmdline(char *Cmd)
+char *GetRestCmdline(const char *Cmd)
 {
-    char *SysCmdLine;
-    char *p;
-
-    SysCmdLine = GetCommandLine();
-    p = strstr(SysCmdLine, Cmd);
+	char* SysCmdLine = GetCommandLine();
+    char* p = strstr(SysCmdLine, Cmd);
 
     if (p)
     {
         p += lstrlen(Cmd); // skip pass the Cmd
 
         if ('"' == *p)
+        {
             p++; // if cmd was quoted, skip past the end quote
+        }
 
         while (*p && ((' ' == *p) || '\t' == *p))
+        {
             p++; // skip whitespace
+        }
     }
 
     return p;
