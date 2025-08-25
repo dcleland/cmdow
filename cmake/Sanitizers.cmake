@@ -51,15 +51,23 @@ function(enable_sanitizers project_name)
       ","
       LIST_OF_SANITIZERS)
 
+    if(LIST_OF_SANITIZERS)
+        if(NOT
+           "${LIST_OF_SANITIZERS}"
+           STREQUAL
+           "")
+          target_compile_options(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
+          target_link_options(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
+        endif()
+    endif()
   endif()
 
-  if(LIST_OF_SANITIZERS)
-    if(NOT
-       "${LIST_OF_SANITIZERS}"
-       STREQUAL
-       "")
-      target_compile_options(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
-      target_link_options(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    option(ENABLE_SANITIZER_ADDRESS "Enable address sanitizer" TRUE)
+    if(ENABLE_SANITIZER_ADDRESS)
+      message("Address sanitizer enabled")
+      list(APPEND SANITIZERS "address")
+      target_compile_options(${project_name} INTERFACE /fsanitize=address /Zi)
     endif()
   endif()
 
