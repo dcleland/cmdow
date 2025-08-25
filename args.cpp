@@ -122,15 +122,6 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
                         argv[i]);
                     QuitMsg(msg);
                 }
-
-            	if ((!a->left) && lstrcmp(argv[i - 1], "0"))
-                {
-                    Quit(MOVERR);
-                }
-                if ((!a->top) && lstrcmp(argv[i], "0"))
-                {
-                    Quit(MOVERR);
-                }
             }
             else
             {
@@ -157,14 +148,6 @@ void ParseArgs(int argc, char *argv[], struct ARGS *a)
 	                    argv[i]);
 	                QuitMsg(msg);
 	            }
-                	if ((!a->width) && lstrcmp(argv[i - 1], "0"))
-                {
-                    Quit(SIZERR);
-                }
-                if ((!a->height) && lstrcmp(argv[i], "0"))
-                {
-                    Quit(SIZERR);
-                }
             }
             else
             {
@@ -437,16 +420,15 @@ char *GetArgs()
     static char *SysCmdLine; /* pointer to system commandline */
     static char *SclPos;     /* pointer to current position of system cmdline */
     static char *Argv;       /* pointer to allocated mem, holds one arg at a time */
-    char *ArgvPos;           /* pointer to current position of argv memory */
-    int i;                   /* general purpose counter */
-    int Quotes;
+    /* pointer to current position of argv memory */
 
     //
     // if !SysCmdLine, initialise the static vars
     //
     if (!SysCmdLine)
     {
-        SysCmdLine = SclPos = GetCommandLine();
+	    int i;
+	    SysCmdLine = SclPos = GetCommandLine();
 
         //
         // allocate enough memory to hold the longest argument
@@ -454,13 +436,15 @@ char *GetArgs()
         i = lstrlen(SysCmdLine);
         Argv = static_cast<char*>(HeapAlloc(GetProcessHeap(), 0, i + 1));
         if (!Argv)
+        {
             Quit(MEMERR);
+        }
     }
 
     //
     // init ArgvPos and NULL terminate Argv
     //
-    ArgvPos = Argv;
+    char* ArgvPos = Argv;
     *ArgvPos = 0;
 
     while (true)
@@ -480,7 +464,7 @@ char *GetArgs()
         //
         // now work through any quotes, copying every third quote
         //
-        Quotes = 0;
+        int Quotes = 0;
         while ('"' == *ArgvPos)
         {
             ++ArgvPos;
@@ -515,14 +499,14 @@ char *GetArgs()
 // Notes:
 //
 //----------------------------------------------------------------------------
-char *GetRestCmdline(const char *Cmd)
+char *GetRestCmdline(const char *cmd)
 {
 	char* SysCmdLine = GetCommandLine();
-    char* p = strstr(SysCmdLine, Cmd);
+    char* p = strstr(SysCmdLine, cmd);
 
     if (p)
     {
-        p += lstrlen(Cmd); // skip pass the Cmd
+        p += lstrlen(cmd); // skip pass the Cmd
 
         if ('"' == *p)
         {
